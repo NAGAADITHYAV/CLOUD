@@ -2,12 +2,14 @@ from flask import Flask, request, Response
 import boto3
 import os
 from threading import Lock
+from concurrent.futures import ThreadPoolExecutor
 
 # ---------- Configuration ----------
 ASU_ID = "1230415071"
 S3_BUCKET_NAME = f"{ASU_ID}-in-bucket"
 SIMPLEDB_DOMAIN = f"{ASU_ID}-simpleDB"
 PORT = 8000
+executor = ThreadPoolExecutor(max_workers=4)
 
 # ---------- AWS Setup ----------
 session = boto3.Session(
@@ -41,36 +43,46 @@ def query_simpledb(filename):
         return items[0]['Attributes'][0]['Value']
     return "Unknown"
 
+def upload_to_s3_async(file_obj, filename):
+    """Upload the file to S3 asynchronously."""
+    executor.submit(upload_to_s3, file_obj, filename)
+
+def query_simpledb_async(filename):
+    """Query SimpleDB asynchronously."""
+    return executor.submit(query_simpledb, filename)
+
 
 @app.route("/", methods=["POST"])
 def handle_request():
     """Handle incoming POST requests and return prediction results."""
-    try:
+    # try:
         # Check if 'inputFile' key exists in request
         # if 'inputFile' not in request.files:
             # return Response("⚠️ Missing 'inputFile' in request.", status=400)
 
-        file = request.files['inputFile']
+    file = request.files['inputFile']
         
-        filename = file.filename
-        filename = os.path.splitext(filename)[0]
+    filename = file.filename
+    filename = os.path.splitext(filename)[0]
 
         # Concurrency lock to handle multiple requests
-        with lock:
-            # Step 1: Upload to S3
-            upload_to_s3(file, filename)
+    with lock:
+        # Step 1: Upload to S3
+        upload_to_s3_async(file, filename)
+        # upload_to_s3(file, filename)
 
-            # Step 2: Query SimpleDB for result
-            prediction = query_simpledb(filename)
-
+        # Step 2: Query SimpleDB for result
+        prediction_future = query_simpledb_async(filename)
+        # prediction = query_simpledb(filename)
+    prediction = prediction_future.result()
         # Step 3: Return result in plain text
-        result = f"{filename}:{prediction}"
+    result = f"{filename}:{prediction}"
         # print(f"Prediction result sent: {result}")
-        return Response(result, status=200, mimetype='text/plain')
+    return Response(result, status=200, mimetype='text/plain')
 
-    except Exception as e:
-        # print(f" Error: {str(e)}")
-        return Response(f" Internal server error: {str(e)}", status=500)
+    # except Exception as e:
+    #     # print(f" Error: {str(e)}")
+    #     return Response(f" Internal server error: {str(e)}", status=500)
 
 
 # ---------- Run Server ----------
