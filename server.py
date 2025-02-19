@@ -72,9 +72,9 @@ def handle_request():
         # upload_to_s3(file, filename)
 
         # Step 2: Query SimpleDB for result
-        prediction_future = query_simpledb_async(filename)
-        # prediction = query_simpledb(filename)
-    prediction = prediction_future.result()
+        # prediction_future = query_simpledb_async(filename)
+        prediction = query_simpledb(filename)
+    # prediction = prediction_future.result()
         # Step 3: Return result in plain text
     result = f"{filename}:{prediction}"
         # print(f"Prediction result sent: {result}")
