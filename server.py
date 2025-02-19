@@ -9,7 +9,7 @@ ASU_ID = "1230415071"
 S3_BUCKET_NAME = f"{ASU_ID}-in-bucket"
 SIMPLEDB_DOMAIN = f"{ASU_ID}-simpleDB"
 PORT = 8000
-executor = ThreadPoolExecutor(max_workers=4)
+executor = ThreadPoolExecutor(max_workers=200)
 
 # ---------- AWS Setup ----------
 session = boto3.Session(
@@ -72,9 +72,9 @@ def handle_request():
         # upload_to_s3(file, filename)
 
         # Step 2: Query SimpleDB for result
-        # prediction_future = query_simpledb_async(filename)
-        prediction = query_simpledb(filename)
-    # prediction = prediction_future.result()
+        prediction_future = query_simpledb_async(filename)
+        # prediction = query_simpledb(filename)
+    prediction = prediction_future.result()
         # Step 3: Return result in plain text
     result = f"{filename}:{prediction}"
         # print(f"Prediction result sent: {result}")
