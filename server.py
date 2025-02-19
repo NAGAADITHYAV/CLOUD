@@ -9,7 +9,7 @@ ASU_ID = "1230415071"
 S3_BUCKET_NAME = f"{ASU_ID}-in-bucket"
 SIMPLEDB_DOMAIN = f"{ASU_ID}-simpleDB"
 PORT = 8000
-executor = ThreadPoolExecutor(max_workers=100)
+executor = ThreadPoolExecutor(max_workers=5)
 
 # ---------- AWS Setup ----------
 session = boto3.Session(
