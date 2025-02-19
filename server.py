@@ -28,7 +28,7 @@ lock = Lock()
 def upload_to_s3(file_obj, filename):
     """Upload the file to S3 bucket."""
     s3.put_object(Bucket=S3_BUCKET_NAME, Key=filename, Body=file_obj)
-    print(f" Uploaded {filename} to S3 bucket {S3_BUCKET_NAME}")
+    # print(f" Uploaded {filename} to S3 bucket {S3_BUCKET_NAME}")
 
 
 def query_simpledb(filename):
@@ -47,8 +47,8 @@ def handle_request():
     """Handle incoming POST requests and return prediction results."""
     try:
         # Check if 'inputFile' key exists in request
-        if 'inputFile' not in request.files:
-            return Response("⚠️ Missing 'inputFile' in request.", status=400)
+        # if 'inputFile' not in request.files:
+            # return Response("⚠️ Missing 'inputFile' in request.", status=400)
 
         file = request.files['inputFile']
         
@@ -65,11 +65,11 @@ def handle_request():
 
         # Step 3: Return result in plain text
         result = f"{filename}:{prediction}"
-        print(f"Prediction result sent: {result}")
+        # print(f"Prediction result sent: {result}")
         return Response(result, status=200, mimetype='text/plain')
 
     except Exception as e:
-        print(f" Error: {str(e)}")
+        # print(f" Error: {str(e)}")
         return Response(f" Internal server error: {str(e)}", status=500)
 
 
