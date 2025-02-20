@@ -37,7 +37,7 @@ def handle_request():
     file = request.files['inputFile']
     filename = os.path.splitext(file.filename)[0]
     
-    executor.submit(upload_to_s3, file, filename)
+    # executor.submit(upload_to_s3, file, filename)
     prediction = query_simpledb(filename)
 
     result = f"{filename}:{prediction}"
