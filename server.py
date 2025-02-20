@@ -67,15 +67,22 @@ def handle_request():
 
         # Concurrency lock to handle multiple requests
     with lock:
-        # Step 1: Upload to S3
-        upload_to_s3_async(file, filename)
-        # upload_to_s3(file, filename)
+        # Step 1: Upload file to S3 asynchronously and wait for completion
+        upload_future = executor.submit(upload_to_s3, file, filename)
+        upload_future.result()  # Ensure upload completes before querying
 
-        # Step 2: Query SimpleDB for result
-        # prediction = query_simpledb(filename)
-        prediction_future = query_simpledb_async(filename)
+        # Step 2: Query SimpleDB for result (asynchronously but awaited)
+        prediction_future = executor.submit(query_simpledb, filename)
+        prediction = prediction_future.result()
+        # Step 1: Upload to S3
+    #     upload_to_s3_async(file, filename)
+    #     # upload_to_s3(file, filename)
+
+    #     # Step 2: Query SimpleDB for result
+    #     # prediction = query_simpledb(filename)
+    #     prediction_future = query_simpledb_async(filename)
         
-    prediction = prediction_future.result()
+    # prediction = prediction_future.result()
 
         # Step 3: Return result in plain text
     result = f"{filename}:{prediction}"
