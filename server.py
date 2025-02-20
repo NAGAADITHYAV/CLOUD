@@ -38,18 +38,7 @@ def query_simpledb(filename):
     response = sdb.select(
         SelectExpression=f"SELECT * FROM `{SIMPLEDB_DOMAIN}` WHERE itemName() = '{filename}'"
     )
-    items = response.get('Items', [])
-    if items:
-        return items[0]['Attributes'][0]['Value']
-    return "Unknown"
-
-def upload_to_s3_async(file_obj, filename):
-    """Upload the file to S3 asynchronously."""
-    
-
-def query_simpledb_async(filename):
-    """Query SimpleDB asynchronously."""
-    return executor.submit(query_simpledb, filename)
+    return response['Items'][0]['Attributes'][0]['Value']
 
 
 @app.route("/", methods=["POST"])
