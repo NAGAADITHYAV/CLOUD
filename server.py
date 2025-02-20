@@ -9,7 +9,7 @@ ASU_ID = "1230415071"
 S3_BUCKET_NAME = f"{ASU_ID}-in-bucket"
 SIMPLEDB_DOMAIN = f"{ASU_ID}-simpleDB"
 PORT = 8000
-executor = ThreadPoolExecutor(max_workers=30)
+executor = ThreadPoolExecutor(max_workers=40)
 
 # ---------- AWS Setup ----------
 session = boto3.Session(
@@ -45,7 +45,7 @@ def query_simpledb(filename):
 
 def upload_to_s3_async(file_obj, filename):
     """Upload the file to S3 asynchronously."""
-    executor.submit(upload_to_s3, file_obj, filename)
+    return executor.submit(upload_to_s3, file_obj, filename)
 
 def query_simpledb_async(filename):
     """Query SimpleDB asynchronously."""
@@ -68,21 +68,12 @@ def handle_request():
         # Concurrency lock to handle multiple requests
     with lock:
         # Step 1: Upload file to S3 asynchronously and wait for completion
-        upload_future = executor.submit(upload_to_s3, file, filename)
+        upload_future = upload_to_s3_async(file, filename)
         upload_future.result()  # Ensure upload completes before querying
 
         # Step 2: Query SimpleDB for result (asynchronously but awaited)
         prediction_future = executor.submit(query_simpledb, filename)
         prediction = prediction_future.result()
-        # Step 1: Upload to S3
-    #     upload_to_s3_async(file, filename)
-    #     # upload_to_s3(file, filename)
-
-    #     # Step 2: Query SimpleDB for result
-    #     # prediction = query_simpledb(filename)
-    #     prediction_future = query_simpledb_async(filename)
-        
-    # prediction = prediction_future.result()
 
         # Step 3: Return result in plain text
     result = f"{filename}:{prediction}"
