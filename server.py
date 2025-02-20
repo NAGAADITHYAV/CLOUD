@@ -9,7 +9,7 @@ ASU_ID = "1230415071"
 S3_BUCKET_NAME = f"{ASU_ID}-in-bucket"
 SIMPLEDB_DOMAIN = f"{ASU_ID}-simpleDB"
 PORT = 8000
-executor = ThreadPoolExecutor(max_workers=10)
+executor = ThreadPoolExecutor(max_workers=4)
 
 # ---------- AWS Setup ----------
 session = boto3.Session(
@@ -68,8 +68,8 @@ def handle_request():
         # Concurrency lock to handle multiple requests
     with lock:
         # Step 1: Upload to S3
-        upload_to_s3_async(file, filename)
-        # upload_to_s3(file, filename)
+        # upload_to_s3_async(file, filename)
+        upload_to_s3(file, filename)
 
         # Step 2: Query SimpleDB for result
         # prediction = query_simpledb(filename)
