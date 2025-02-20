@@ -55,30 +55,45 @@ def query_simpledb_async(filename):
 @app.route("/", methods=["POST"])
 def handle_request():
     """Handle incoming POST requests and return prediction results."""
+    file = request.files['inputFile']
+    filename = os.path.splitext(file.filename)[0]
+    
+    with lock:
+        # Step 1: Upload to S3 asynchronously and wait for completion
+        s3_future = executor.submit(upload_to_s3, file, filename)
+        s3_future.result()  # Wait until S3 upload completes
+
+        # Step 2: Query SimpleDB for result (now guaranteed after upload)
+        prediction_future = executor.submit(query_simpledb, filename)
+        prediction = prediction_future.result()
+
+    # Step 3: Return the prediction result
+    result = f"{filename}:{prediction}"
+    return Response(result, status=200, mimetype='text/plain')
     # try:
         # Check if 'inputFile' key exists in request
         # if 'inputFile' not in request.files:
             # return Response("⚠️ Missing 'inputFile' in request.", status=400)
 
-    file = request.files['inputFile']
+    # file = request.files['inputFile']
         
-    filename = file.filename
-    filename = os.path.splitext(filename)[0]
+    # filename = file.filename
+    # filename = os.path.splitext(filename)[0]
 
-        # Concurrency lock to handle multiple requests
-    with lock:
-        # Step 1: Upload file to S3 asynchronously and wait for completion
-        upload_future = upload_to_s3_async(file, filename)
-        upload_future.result()  # Ensure upload completes before querying
+    #     # Concurrency lock to handle multiple requests
+    # with lock:
+    #     # Step 1: Upload file to S3 asynchronously and wait for completion
+    #     upload_future = upload_to_s3_async(file, filename)
+    #     upload_future.result()  # Ensure upload completes before querying
 
-        # Step 2: Query SimpleDB for result (asynchronously but awaited)
-        prediction_future = executor.submit(query_simpledb, filename)
-        prediction = prediction_future.result()
+    #     # Step 2: Query SimpleDB for result (asynchronously but awaited)
+    #     prediction_future = executor.submit(query_simpledb, filename)
+    #     prediction = prediction_future.result()
 
-        # Step 3: Return result in plain text
-    result = f"{filename}:{prediction}"
-        # print(f"Prediction result sent: {result}")
-    return Response(result, status=200, mimetype='text/plain')
+    #     # Step 3: Return result in plain text
+    # result = f"{filename}:{prediction}"
+    #     # print(f"Prediction result sent: {result}")
+    # return Response(result, status=200, mimetype='text/plain')
 
     # except Exception as e:
     #     # print(f" Error: {str(e)}")
