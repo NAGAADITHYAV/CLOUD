@@ -68,8 +68,8 @@ def handle_request():
         # Concurrency lock to handle multiple requests
     with lock:
         # Step 1: Upload to S3
-        # upload_to_s3_async(file, filename)
-        upload_to_s3(file, filename)
+        upload_to_s3_async(file, filename)
+        # upload_to_s3(file, filename)
 
         # Step 2: Query SimpleDB for result
         # prediction = query_simpledb(filename)
