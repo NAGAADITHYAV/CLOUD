@@ -45,7 +45,7 @@ def query_simpledb(filename):
 
 def upload_to_s3_async(file_obj, filename):
     """Upload the file to S3 asynchronously."""
-    return executor.submit(upload_to_s3, file_obj, filename)
+    
 
 def query_simpledb_async(filename):
     """Query SimpleDB asynchronously."""
@@ -60,15 +60,15 @@ def handle_request():
     
     with lock:
         # Step 1: Upload to S3 asynchronously and wait for completion
-        s3_future = executor.submit(upload_to_s3, file, filename)
-        s3_future.result()  # Wait until S3 upload completes
+        executor.submit(upload_to_s3, file, filename)
 
         # Step 2: Query SimpleDB for result (now guaranteed after upload)
-        prediction_future = executor.submit(query_simpledb, filename)
-        prediction = prediction_future.result()
+        prediction = query_simpledb(filename)
 
     # Step 3: Return the prediction result
     result = f"{filename}:{prediction}"
+    # while True:
+    #     pass
     return Response(result, status=200, mimetype='text/plain')
     # try:
         # Check if 'inputFile' key exists in request
