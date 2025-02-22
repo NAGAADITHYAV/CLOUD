@@ -28,10 +28,13 @@ app = Flask(__name__)
 
 def build_query_hash():
     response = sdb.select(
-        SelectExpression=f"SELECT * FROM `{SIMPLEDB_DOMAIN}`"
+        SelectExpression=f"SELECT * FROM `{SIMPLEDB_DOMAIN}` LIMIT 1000"
     )
+    print(len(response['Items']))
     for item in response['Items']:
         RESULTS[item['Name']] = item['Attributes'][0]['Value']
+    
+    print(sorted(RESULTS.keys()))
 
 def upload_to_s3(file_obj, filename):
     s3.put_object(Bucket=S3_BUCKET_NAME, Key=filename, Body=file_obj)
