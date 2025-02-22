@@ -1,8 +1,6 @@
 from flask import Flask, request, Response
 import boto3
 import os
-# import time
-# from concurrent.futures import ThreadPoolExecutor
 
 # ---------- Configuration ----------
 ASU_ID = "1230415071"
@@ -12,7 +10,6 @@ AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 PORT = 8000
 RESULTS = {}
-# executor = ThreadPoolExecutor(max_workers=40)
 
 # ---------- AWS Setup ----------
 session = boto3.Session(
@@ -40,20 +37,11 @@ def upload_to_s3(file_obj, filename):
     s3.put_object(Bucket=S3_BUCKET_NAME, Key=filename, Body=file_obj)
 
 @app.route("/", methods=["POST"])
-def handle_request():
+def predict_image():
     file = request.files['inputFile']
     filename = os.path.splitext(file.filename)[0]
-    
-    # t1 = time.time()
     upload_to_s3(file, filename)
-    # t2 = time.time()
-    prediction = RESULTS[filename] # query_simpledb(filename)
-    # t3 = time.time()
-    # print("uploadTime:",t2-t1)
-    # print("queryTime:",t3-t2)
-    result = f"{filename}:{prediction}"
-    return Response(result, status=200, mimetype='text/plain')
-
+    return Response(f"{filename}:{RESULTS[filename]}", status=200, mimetype='text/plain')
 
 # ---------- Run Server ----------
 if __name__ == "__main__":
