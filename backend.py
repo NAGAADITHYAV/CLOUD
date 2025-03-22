@@ -55,7 +55,7 @@ def process_requests():
     print('process_request called')
     request = fetch_request()
     print("request", request)
-    while(True):
+    while(request):
         filename, receipt_handle = request
         print('filename',filename)
         image_path = download_image_from_s3(filename)
