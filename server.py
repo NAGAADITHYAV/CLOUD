@@ -3,6 +3,7 @@ import boto3
 import os
 import asyncio
 import threading
+import atexit
 
 # ---------- Configuration ----------
 ASU_ID = "1230415071"
@@ -34,7 +35,7 @@ def fetch_messages_from_resp_queue():
     while server_running:
         response = sqs.receive_message(
             QueueUrl=resp_que,
-            MaxNumberOfMessages=15,
+            MaxNumberOfMessages=10,
             VisibilityTimeout= 5,
         )
         messages = response.get('Messages', [])
@@ -79,12 +80,14 @@ async def predict_image():
 fetch_thread = threading.Thread(target=fetch_messages_from_resp_queue, daemon=True)
 fetch_thread.start()
 
-@app.on_event("shutdown")
 def shutdown_event():
     global server_running
     server_running = False
     fetch_thread.join()
 
+atexit.register(shutdown_event)
+
 if __name__ == "__main__":
     import uvicorn
+    atexit.register(shutdown_event)
     uvicorn.run(app, host="0.0.0.0", port=8000)
