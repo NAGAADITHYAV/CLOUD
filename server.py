@@ -1,9 +1,12 @@
-from flask import Flask, request, Response
+
 import boto3
 import os
 import asyncio
 import threading
-import atexit
+from fastapi import FastAPI, UploadFile, File
+from starlette.responses import PlainTextResponse
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+
 
 # ---------- Configuration ----------
 ASU_ID = "1230415071"
@@ -29,10 +32,13 @@ req_que = 'https://sqs.us-east-1.amazonaws.com/340752817731/1230415071-req-queue
 resp_que = 'https://sqs.us-east-1.amazonaws.com/340752817731/1230415071-resp-queue'
 
 # ---------- Flask App ----------
-app = Flask(__name__)
+app = FastAPI()
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 def fetch_messages_from_resp_queue():
+    print(server_running)
     while server_running:
+        print(server_running)
         response = sqs.receive_message(
             QueueUrl=resp_que,
             MaxNumberOfMessages=10,
@@ -40,16 +46,15 @@ def fetch_messages_from_resp_queue():
         )
         messages = response.get('Messages', [])
         if not messages:
-            return None
+            continue
         for message in messages:
             receipt_handle = message['ReceiptHandle']
             result = message['Body']
             filename, classification = result.split(':')
-            RESULTS[filename] = f"{os.path.splittext(filename)[0]}:{classification}"
-            QWAIT[filename].set()
-            sqs.delete_message(
-                QueueUrl = resp_que,
-                 ReceiptHandle=receipt_handle)
+            RESULTS[filename] = f"{os.path.splitext(filename)[0]}:{classification}"
+            if filename in QWAIT:
+               QWAIT[filename].set()
+            sqs.delete_message(QueueUrl = resp_que, ReceiptHandle=receipt_handle)
 
 def upload_to_s3(file_obj, filename):
     s3.put_object(Bucket=S3_BUCKET_NAME, Key=filename, Body=file_obj)
@@ -59,35 +64,27 @@ def send_to_req_queue(filename):
         QueueUrl = req_que,
         MessageBody = filename)
 
-@app.route("/", methods=["POST"])
-async def predict_image():
-    file = request.files['inputFile']
-    upload_to_s3(file, file.filename)
-    send_to_req_queue(file.filename)
+@app.post("/", response_class=PlainTextResponse)
+async def predict_image(inputFile: UploadFile = File(...)):
+    file_content = await inputFile.read()
+    filename = inputFile.filename 
+    upload_to_s3(file_content, filename)
+    send_to_req_queue(filename)
 
     wait_event = asyncio.Event()
-    QWAIT[file.filename] = wait_event
+    QWAIT[filename] = wait_event
 
     await wait_event.wait()
 
-    result = RESULTS.pop(file.filename, '' )
-    QWAIT.pop(file.filename, '')
+    result = RESULTS.pop(filename, '' )
+    QWAIT.pop(filename, '')
 
-
-    return Response(result, status=200, mimetype='text/plain')
+    return result
 
 # ---------- Run Server ----------
 fetch_thread = threading.Thread(target=fetch_messages_from_resp_queue, daemon=True)
 fetch_thread.start()
 
-def shutdown_event():
-    global server_running
-    server_running = False
-    fetch_thread.join()
-
-atexit.register(shutdown_event)
-
 if __name__ == "__main__":
     import uvicorn
-    atexit.register(shutdown_event)
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=PORT)

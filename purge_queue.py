@@ -16,4 +16,4 @@ def purge_sqs_queue(queue_url):
         print(f"Error purging queue: {e}")
 
 if __name__ == "__main__":
-    purge_sqs_queue(RESP_QUEUE_URL)
+    purge_sqs_queue(QUEUE_URL)
