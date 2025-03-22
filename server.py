@@ -18,6 +18,8 @@ PORT = 8000
 RESULTS = {}
 QWAIT = {}
 server_running = True
+REQ_QUEUE = 'https://sqs.us-east-1.amazonaws.com/340752817731/1230415071-req-queue'
+RESP_QUEUE = 'https://sqs.us-east-1.amazonaws.com/340752817731/1230415071-resp-queue'
 
 # ---------- AWS Setup ----------
 session = boto3.Session(
@@ -28,8 +30,7 @@ session = boto3.Session(
 s3 = session.client('s3')
 sdb = session.client('sdb')
 sqs = session.client('sqs')
-req_que = 'https://sqs.us-east-1.amazonaws.com/340752817731/1230415071-req-queue'
-resp_que = 'https://sqs.us-east-1.amazonaws.com/340752817731/1230415071-resp-queue'
+
 
 # ---------- Flask App ----------
 app = FastAPI()
@@ -40,7 +41,7 @@ def fetch_messages_from_resp_queue():
     while server_running:
         print(server_running)
         response = sqs.receive_message(
-            QueueUrl=resp_que,
+            QueueUrl=RESP_QUEUE,
             MaxNumberOfMessages=10,
             VisibilityTimeout= 5,
         )
@@ -54,14 +55,14 @@ def fetch_messages_from_resp_queue():
             RESULTS[filename] = f"{os.path.splitext(filename)[0]}:{classification}"
             if filename in QWAIT:
                QWAIT[filename].set()
-            sqs.delete_message(QueueUrl = resp_que, ReceiptHandle=receipt_handle)
+            sqs.delete_message(QueueUrl = RESP_QUEUE, ReceiptHandle=receipt_handle)
 
 def upload_to_s3(file_obj, filename):
     s3.put_object(Bucket=S3_BUCKET_NAME, Key=filename, Body=file_obj)
 
 def send_to_req_queue(filename):
     sqs.send_message(
-        QueueUrl = req_que,
+        QueueUrl = REQ_QUEUE,
         MessageBody = filename)
 
 @app.post("/", response_class=PlainTextResponse)

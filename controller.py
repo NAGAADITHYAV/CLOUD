@@ -4,9 +4,10 @@ import os
 ASU_ID = '1230415071'
 AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-req_que = 'https://sqs.us-east-1.amazonaws.com/340752817731/1230415071-req-queue'
-resp_que = 'https://sqs.us-east-1.amazonaws.com/340752817731/1230415071-resp-queue'
+REQ_QUEUE = 'https://sqs.us-east-1.amazonaws.com/340752817731/1230415071-req-queue'
+RESP_QUEUE = 'https://sqs.us-east-1.amazonaws.com/340752817731/1230415071-resp-queue'
 MAX_INSTANCES = 15
+AMI_ID = 'ami-0f4fd1f8759c73c4c'
 # ---------- AWS Setup ----------
 session = boto3.Session(
     aws_access_key_id = AWS_ACCESS_KEY_ID,
@@ -16,11 +17,11 @@ session = boto3.Session(
 sqs = session.client('sqs')
 ec2 = session.resource('ec2')
 input_bucket = f'{ASU_ID}-in-bucket'
-app_tier_ami_id = 'ami-0eff13949d9e2cd6c'
+
 
 def get_queue_length():
     attributes = sqs.get_queue_attributes(
-        QueueUrl=req_que,
+        QueueUrl=REQ_QUEUE,
         AttributeNames=['ApproximateNumberOfMessages']
     )
     return int(attributes['Attributes'].get('ApproximateNumberOfMessages', '0'))
@@ -41,7 +42,7 @@ def autoscale_instances(queue_count):
         for i in range(instances_needed):
             instance_number = active_instance_count + i + 1
             ec2.create_instances(
-                ImageId=app_tier_ami_id,
+                ImageId=AMI_ID,
                 MinCount=1,
                 MaxCount=1,
                 InstanceType='t2.micro',
