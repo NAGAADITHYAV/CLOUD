@@ -1,6 +1,8 @@
 from flask import Flask, request, Response
 import boto3
 import os
+import asyncio
+import threading
 
 # ---------- Configuration ----------
 ASU_ID = "1230415071"
@@ -10,6 +12,8 @@ AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 PORT = 8000
 RESULTS = {}
+QWAIT = {}
+server_running = True
 
 # ---------- AWS Setup ----------
 session = boto3.Session(
@@ -19,32 +23,68 @@ session = boto3.Session(
 )
 s3 = session.client('s3')
 sdb = session.client('sdb')
+sqs = session.client('sqs')
+req_que = 'https://sqs.us-east-1.amazonaws.com/340752817731/1230415071-req-queue'
+resp_que = 'https://sqs.us-east-1.amazonaws.com/340752817731/1230415071-resp-queue'
 
 # ---------- Flask App ----------
 app = Flask(__name__)
 
-def build_query_hash():
-    response = sdb.select(
-        SelectExpression=f"SELECT * FROM `{SIMPLEDB_DOMAIN}` LIMIT 1000"
-    )
-    print(len(response['Items']))
-    for item in response['Items']:
-        RESULTS[item['Name']] = item['Attributes'][0]['Value']
-    
-    print(sorted(RESULTS.keys()))
+def fetch_messages_from_resp_queue():
+    while server_running:
+        response = sqs.receive_message(
+            QueueUrl=resp_que,
+            MaxNumberOfMessages=15,
+            VisibilityTimeout= 5,
+        )
+        messages = response.get('Messages', [])
+        if not messages:
+            return None
+        for message in messages:
+            receipt_handle = message['ReceiptHandle']
+            result = message['Body']
+            filename, classification = result.split(':')
+            RESULTS[filename] = f"{os.path.splittext(filename)[0]}:{classification}"
+            QWAIT[filename].set()
+            sqs.delete_message(
+                QueueUrl = resp_que,
+                 ReceiptHandle=receipt_handle)
 
 def upload_to_s3(file_obj, filename):
     s3.put_object(Bucket=S3_BUCKET_NAME, Key=filename, Body=file_obj)
 
+def send_to_req_queue(filename):
+    sqs.send_message(
+        QueueUrl = req_que,
+        MessageBody = filename)
+
 @app.route("/", methods=["POST"])
-def predict_image():
+async def predict_image():
     file = request.files['inputFile']
-    filename = os.path.splitext(file.filename)[0]
-    upload_to_s3(file, filename)
-    return Response(f"{filename}:{RESULTS[filename]}", status=200, mimetype='text/plain')
+    upload_to_s3(file, file.filename)
+    send_to_req_queue(file.filename)
+
+    wait_event = asyncio.Event()
+    QWAIT[file.filename] = wait_event
+
+    await wait_event.wait()
+
+    result = RESULTS.pop(file.filename, '' )
+    QWAIT.pop(file.filename, '')
+
+
+    return Response(result, status=200, mimetype='text/plain')
 
 # ---------- Run Server ----------
+fetch_thread = threading.Thread(target=fetch_messages_from_resp_queue, daemon=True)
+fetch_thread.start()
+
+@app.on_event("shutdown")
+def shutdown_event():
+    global server_running
+    server_running = False
+    fetch_thread.join()
+
 if __name__ == "__main__":
-    build_query_hash()
-    print(f"Server running on port {PORT}")
-    app.run(host="0.0.0.0", port=PORT, threaded=True)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
