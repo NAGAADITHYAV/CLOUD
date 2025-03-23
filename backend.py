@@ -52,8 +52,10 @@ def fetch_request():
 
 
 def process_requests():
-    request = fetch_request()
-    while(request):
+    while(True):
+        request = fetch_request()
+        if not request:
+            continue
         filename, receipt_handle = request
         image_path = download_image_from_s3(filename)
         result = perform_face_recognition(filename, image_path)
@@ -62,7 +64,6 @@ def process_requests():
         send_to_response_queue(result)
         os.remove(image_path)
         sqs.delete_message(QueueUrl=REQ_QUEUE, ReceiptHandle=receipt_handle)
-        request = fetch_request()
 
 if __name__ == '__main__':
     process_requests()

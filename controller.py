@@ -7,7 +7,7 @@ AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 REQ_QUEUE = 'https://sqs.us-east-1.amazonaws.com/340752817731/1230415071-req-queue'
 RESP_QUEUE = 'https://sqs.us-east-1.amazonaws.com/340752817731/1230415071-resp-queue'
 MAX_INSTANCES = 15
-AMI_ID = 'ami-0f4fd1f8759c73c4c'
+AMI_ID = 'ami-03f5b9cd81d07aaef'
 # ---------- AWS Setup ----------
 session = boto3.Session(
     aws_access_key_id = AWS_ACCESS_KEY_ID,
@@ -47,7 +47,7 @@ def autoscale_instances(queue_count):
                 MaxCount=1,
                 InstanceType='t2.micro',
                 KeyName='Project1',
-                IamInstanceProfile={'Name': 'AppTierRole'},
+                IamInstanceProfile={'Name': 'IAM-DEV-ADI'},
                 TagSpecifications=[{
                     'ResourceType': 'instance',
                     'Tags': [
@@ -56,9 +56,12 @@ def autoscale_instances(queue_count):
                     ]
                 }],
                 UserData="""#!/bin/bash
-                cd /home/ubuntu/
-                source /home/ubuntu/ccp2/bin/activate
-                nohup python3 /home/ubuntu/app_tier.py > app_tier.log 2>&1 &
+                cd ~
+                source myenv/bin/activate
+                export AWS_SECRET_ACCESS_KEY={AWS_SECRET_ACCESS_KEY}
+                export AWS_ACCESS_KEY_ID={AWS_ACCESS_KEY_ID}
+                cd CLOUD/
+                nohup python3 backend.py &
                 """
             )
             print(f"Started app-tier-instance-{instance_number}.")

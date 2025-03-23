@@ -37,9 +37,7 @@ app = FastAPI()
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 def fetch_messages_from_resp_queue():
-    print(server_running)
     while server_running:
-        print(server_running)
         response = sqs.receive_message(
             QueueUrl=RESP_QUEUE,
             MaxNumberOfMessages=10,
