@@ -6,7 +6,8 @@ ASU_ID = '1230415071'
 REQ_QUEUE = 'https://sqs.us-east-1.amazonaws.com/340752817731/1230415071-req-queue'
 RESP_QUEUE = 'https://sqs.us-east-1.amazonaws.com/340752817731/1230415071-resp-queue'
 MAX_INSTANCES = 15
-AMI_ID = 'ami-0b6fbc8df0a65b120'
+AMI_ID = 'ami-07ad8c1ac71bfb6ce'
+INS_IDS = []
 # ---------- AWS Setup ----------
 session = boto3.Session(
     region_name = "us-east-1"
